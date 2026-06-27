@@ -1,8 +1,11 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+
+const DashboardHeatmap = dynamic(() => import('@/components/DashboardHeatmap'), { ssr: false })
 
 interface HeatmapPin {
   pin_code: string
@@ -190,8 +193,13 @@ export default function DashboardPage() {
 
         {!loading && activeTab === 'heatmap' && (
           <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold" style={{ color: '#1F2937' }}>Demand Heatmap by PIN Code</h2>
+            <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-bold" style={{ color: '#1F2937' }}>Demand Heatmap by PIN Code</h2>
+                <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
+                  Real customer reports shown on a map. Hotter circles mean more requests from that postal cluster.
+                </p>
+              </div>
               <div className="flex gap-3 text-xs">
                 <span>🟢 Low</span>
                 <span>🟡 Medium</span>
@@ -199,43 +207,45 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {heatmap.length === 0 && (
+            <DashboardHeatmap heatmap={heatmap} />
+
+            {heatmap.length === 0 ? (
               <div className="text-center py-12" style={{ color: '#6B7280' }}>
                 <p className="text-4xl mb-3">📍</p>
                 <p>No SOS reports yet. Reports will appear here as customers submit them.</p>
               </div>
-            )}
-
-            <div className="flex flex-col gap-2">
-              {heatmap.map(pin => (
-                <div
-                  key={pin.pin_code}
-                  className="flex items-center gap-4 p-4 rounded-xl transition-all hover:shadow-md"
-                  style={{
-                    backgroundColor: pin.report_count >= 5 ? '#FEF2F2' : pin.report_count >= 2 ? '#FFFBEB' : '#F0FDF4',
-                  }}
-                >
+            ) : (
+              <div className="space-y-3">
+                {heatmap.map(pin => (
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white flex-shrink-0"
+                    key={pin.pin_code}
+                    className="flex items-center gap-4 p-4 rounded-xl transition-all hover:shadow-md"
                     style={{
-                      backgroundColor: pin.report_count >= 5 ? '#EF4444' : pin.report_count >= 2 ? '#FBBF24' : '#22C55E',
+                      backgroundColor: pin.report_count >= 5 ? '#FEF2F2' : pin.report_count >= 2 ? '#FFFBEB' : '#F0FDF4',
                     }}
                   >
-                    {pin.report_count}
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white flex-shrink-0"
+                      style={{
+                        backgroundColor: pin.report_count >= 5 ? '#EF4444' : pin.report_count >= 2 ? '#FBBF24' : '#22C55E',
+                      }}
+                    >
+                      {pin.report_count}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-mono font-bold" style={{ color: '#1F2937' }}>{pin.pin_code}</p>
+                      <p className="text-xs truncate" style={{ color: '#6B7280' }}>{pin.products.join(' · ')}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <DemandBadge count={pin.report_count} />
+                      <p className="text-xs mt-1" style={{ color: '#9CA3AF' }}>
+                        {new Date(pin.last_reported).toLocaleDateString('en-IN')}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-mono font-bold" style={{ color: '#1F2937' }}>{pin.pin_code}</p>
-                    <p className="text-xs truncate" style={{ color: '#6B7280' }}>{pin.products.join(' · ')}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <DemandBadge count={pin.report_count} />
-                    <p className="text-xs mt-1" style={{ color: '#9CA3AF' }}>
-                      {new Date(pin.last_reported).toLocaleDateString('en-IN')}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -41,7 +41,11 @@ create table if not exists sos_reports (
   pin_code        text not null,
   product_name    text not null,
   platform        text not null check (platform in ('blinkit','instamart','zepto','store')),
-  points_earned   integer not null default 30,
+  points_earned   integer not null default 0,
+  report_status   text not null default 'pending' check (report_status in ('pending', 'finalized')),
+  screenshot_url  text,
+  location_lat    double precision,
+  location_lng    double precision,
   customer_phone  text references customers(phone),
   created_at      timestamptz not null default now()
 );

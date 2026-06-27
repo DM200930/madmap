@@ -28,6 +28,10 @@ export interface SOSReport {
   platform: Platform
   points_earned: number
   customer_phone?: string
+  report_status?: 'pending' | 'finalized'
+  screenshot_url?: string
+  location_lat?: number
+  location_lng?: number
   created_at: string
 }
 

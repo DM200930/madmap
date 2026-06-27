@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { PRODUCTS, PLATFORMS, POINTS, type Platform } from '@/lib/types'
@@ -16,31 +16,57 @@ export default function SOSPage() {
     platform: 'blinkit' as Platform,
     customer_phone: '',
   })
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null)
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationStatus, setLocationStatus] = useState('Detecting your current location...')
+
+  useEffect(() => {
+    if (!navigator?.geolocation) {
+      setLocationStatus('Location is not available in this browser.')
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        })
+        setLocationStatus('Location captured from this device.')
+      },
+      () => {
+        setLocationStatus('Allow location access so we can record where the report was submitted from.')
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    )
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
 
+    if (!screenshotFile) {
+      setError('Please attach a screenshot of the missing MadMix item to submit the report.')
+      setLoading(false)
+      return
+    }
+
     try {
-      const { error: err } = await supabase.from('sos_reports').insert({
+      const payload: Record<string, unknown> = {
         pin_code: form.pin_code,
         product_name: form.product_name,
         platform: form.platform,
-        points_earned: POINTS.sos_report,
+        points_earned: 0,
+        report_status: 'pending',
         customer_phone: form.customer_phone || null,
-      })
-
-      if (err) throw err
-
-      if (form.customer_phone) {
-        await supabase.rpc('add_customer_points', {
-          p_phone: form.customer_phone,
-          p_points: POINTS.sos_report,
-          p_scan: false,
-        })
+        location_lat: location?.lat ?? null,
+        location_lng: location?.lng ?? null,
       }
 
+      const { error: err } = await supabase.from('sos_reports').insert(payload)
+
+      if (err) throw err
       setSubmitted(true)
     } catch {
       setError('Something went wrong. Please try again.')
@@ -56,10 +82,10 @@ export default function SOSPage() {
           <div className="text-6xl mb-4 animate-celebrate">📍</div>
           <h1 className="text-2xl font-bold mb-2" style={{ color: '#1F2937' }}>Report Received!</h1>
           <p className="text-sm mb-4" style={{ color: '#6B7280' }}>
-            You earned <span className="font-bold" style={{ color: '#F97316' }}>+{POINTS.sos_report} points</span> for helping us identify unmet demand.
+            Your report is now pending review. Once verified, you will be awarded <span className="font-bold" style={{ color: '#F97316' }}>+{POINTS.sos_report} points</span>.
           </p>
           <p className="text-sm mb-6" style={{ color: '#6B7280' }}>
-            Your report has been added to our demand map. We use these signals to bring MadMix to high-demand areas faster.
+            We captured the location information from your device and the screenshot has been included with your report.
           </p>
           <div className="flex flex-col gap-3">
             <Link
@@ -158,9 +184,31 @@ export default function SOSPage() {
             </div>
           </div>
 
+          <div className="rounded-2xl bg-[#FEF7E6] border border-[#FDE68A] p-4 text-sm" style={{ color: '#6B7280' }}>
+            <p className="font-medium" style={{ color: '#1F2937' }}>Current location</p>
+            <p className="mt-1">{location ? `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}` : locationStatus}</p>
+            <p className="text-xs mt-2">We use your current location to validate where the SOS request was submitted from.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: '#1F2937' }}>Screenshot of missing item *</label>
+            <input
+              type="file"
+              accept="image/*"
+              required
+              onChange={e => setScreenshotFile(e.target.files?.[0] ?? null)}
+              className="w-full text-sm outline-none"
+            />
+            {screenshotFile && (
+              <p className="text-xs mt-2" style={{ color: '#1F2937' }}>
+                Attached: {screenshotFile.name}
+              </p>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: '#1F2937' }}>
-              Phone Number <span style={{ color: '#6B7280' }}>(optional — to receive points)</span>
+              Phone Number <span style={{ color: '#6B7280' }}>(optional — to receive points after review)</span>
             </label>
             <input
               type="tel"
