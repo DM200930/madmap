@@ -1,5 +1,3 @@
-import { pinToCoord } from './geo'
-
 export interface ResolvedLocation {
   lat: number
   lng: number
@@ -80,68 +78,77 @@ const insideIndia = (lat: number, lng: number) =>
   lat >= IN_LAT_MIN && lat <= IN_LAT_MAX && lng >= IN_LNG_MIN && lng <= IN_LNG_MAX
 
 /**
- * Resolve a manually entered 6-digit Indian PIN code to a location, restricted
- * to India. Validity is established via the India Post dataset (Indian PINs
- * only), then coordinates are fetched from Nominatim with countrycodes=in.
- * Returns null only when the PIN is not a valid Indian PIN code.
+ * Resolve a manually entered 6-digit Indian PIN code to real coordinates.
+ *
+ * Strategy:
+ *  1. Validate the PIN via the India Post API. Invalid → return null.
+ *  2. From the response, take the Post Office, District and State.
+ *  3. Geocode by place name ("Post Office, District, State, India", then
+ *     "District, State, India") with countrycodes=in — far more reliable than
+ *     geocoding a raw PIN.
+ *  4. Choose a result inside India.
+ *
+ * There is NO synthetic fallback: a valid PIN either resolves to real
+ * coordinates or returns null (so the form shows the validation message).
  */
 export async function geocodeIndianPin(pin: string): Promise<ResolvedLocation | null> {
   const clean = (pin || '').replace(/\D/g, '').slice(0, 6)
   if (clean.length !== 6) return null
 
-  let city = ''
-  let state = ''
-  let validIndianPin = false
-
   // 1) Validate + name the PIN using India Post (an India-only dataset).
+  let postOffice = ''
+  let district = ''
+  let state = ''
   try {
     const res = await fetch(`https://api.postalpincode.in/pincode/${clean}`)
     const json = await res.json()
     const rec = Array.isArray(json) ? json[0] : null
-    if (rec && rec.Status === 'Success' && rec.PostOffice?.length) {
-      const po = rec.PostOffice[0]
-      city = po.District || po.Block || po.Name || ''
-      state = po.State || ''
-      validIndianPin = true
-    }
+    if (!rec || rec.Status !== 'Success' || !rec.PostOffice?.length) return null
+    const po = rec.PostOffice[0]
+    postOffice = po.Name || po.Block || ''
+    district = po.District || ''
+    state = po.State || ''
   } catch {
-    /* fall through to Nominatim */
+    // Could not validate the PIN → treat as unresolved (no synthetic coords).
+    return null
   }
 
-  // 2) Coordinates, explicitly restricted to India (country=IN).
-  let lat = NaN
-  let lng = NaN
-  try {
-    const url = city
-      ? `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=in&addressdetails=1&limit=1&q=${encodeURIComponent(`${city}, ${state}, India`)}`
-      : `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=in&addressdetails=1&limit=1&postalcode=${clean}`
-    const res = await fetch(url, { headers: { Accept: 'application/json' } })
-    const data = await res.json()
-    // Always choose a result inside India.
-    const hit = Array.isArray(data) ? data.find((d) => d?.address?.country_code === 'in') : null
-    if (hit) {
-      const hlat = parseFloat(hit.lat)
-      const hlng = parseFloat(hit.lon)
-      if (insideIndia(hlat, hlng)) {
-        lat = hlat; lng = hlng
-        if (!state) state = hit.address?.state || ''
-        if (!city) city = hit.address?.city || hit.address?.county || hit.address?.state_district || ''
-        validIndianPin = true
+  // 2) Build place-name queries from the postal data, most specific first.
+  const queries = [
+    [postOffice, district, state, 'India'],
+    [district, state, 'India'],
+  ]
+    .map(parts => parts.filter(Boolean).join(', '))
+    .filter((q, i, arr) => q && arr.indexOf(q) === i)
+
+  // 3) Geocode each candidate, restricted to India, choosing a result in India.
+  for (const q of queries) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=in&addressdetails=1&limit=5&q=${encodeURIComponent(q)}`
+      const res = await fetch(url, { headers: { Accept: 'application/json' } })
+      const data = await res.json()
+      if (!Array.isArray(data)) continue
+      const hit = data.find(d => {
+        const la = parseFloat(d?.lat)
+        const ln = parseFloat(d?.lon)
+        return d?.address?.country_code === 'in' && insideIndia(la, ln)
+      })
+      if (hit) {
+        return {
+          lat: parseFloat(hit.lat),
+          lng: parseFloat(hit.lon),
+          pin_code: clean,
+          city: district || hit.address?.city || hit.address?.state_district || '',
+          state,
+        }
       }
+    } catch {
+      // try the next, coarser query
     }
-  } catch {
-    /* fall through to synthetic fallback */
   }
 
-  // If neither source recognised the PIN, it is not a valid Indian PIN.
-  if (!validIndianPin) return null
-
-  // Valid Indian PIN but no precise coordinates → India-clamped fallback.
-  if (!isFinite(lat) || !isFinite(lng) || !insideIndia(lat, lng)) {
-    ;[lat, lng] = pinToCoord(clean)
-  }
-
-  return { lat, lng, pin_code: clean, city, state }
+  // Valid Indian PIN but no real coordinates found → fail (no estimation).
+  return null
 }
 
 /** Promise wrapper around the browser geolocation API. */
