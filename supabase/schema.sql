@@ -51,15 +51,18 @@ create table if not exists sos_reports (
   location_lat    double precision,
   location_lng    double precision,
   customer_phone  text references customers(phone),
+  notified        boolean not null default false,
+  restocked_at    timestamptz,
   created_at      timestamptz not null default now()
 );
 
--- Customer feedback (product feedback / feature requests)
+-- Customer feedback (star rating per product)
 create table if not exists feedback (
   id             uuid primary key default gen_random_uuid(),
   product        text,
   flavour        text,
-  message        text not null,
+  rating         integer check (rating between 1 and 5),
+  message        text,
   pin_code       text,
   city           text,
   state          text,
@@ -75,6 +78,7 @@ create index if not exists scans_pin_code_idx       on scans(pin_code);
 create index if not exists scans_created_at_idx     on scans(created_at desc);
 create index if not exists sos_pin_code_idx         on sos_reports(pin_code);
 create index if not exists sos_created_at_idx       on sos_reports(created_at desc);
+create index if not exists sos_notified_idx         on sos_reports(notified);
 create index if not exists feedback_created_at_idx  on feedback(created_at desc);
 create index if not exists customers_phone_idx      on customers(phone);
 

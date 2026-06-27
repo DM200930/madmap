@@ -36,6 +36,8 @@ export interface SOSReport {
   screenshot_url?: string
   location_lat?: number
   location_lng?: number
+  notified?: boolean
+  restocked_at?: string
   created_at: string
 }
 
@@ -43,7 +45,8 @@ export interface Feedback {
   id: string
   product?: string
   flavour?: string
-  message: string
+  rating?: number
+  message?: string
   pin_code?: string
   city?: string
   state?: string

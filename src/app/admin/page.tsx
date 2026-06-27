@@ -8,16 +8,19 @@ import TopNav from '@/components/TopNav'
 import Reveal from '@/components/Reveal'
 import { pinToCoord, type DemandPoint } from '@/lib/geo'
 import { getSalesSummary, BLENDED_UNIT_PRICE } from '@/lib/salesData'
+import {
+  computeHiddenRevenue, computeRestock, buildExecSummary, splitProduct,
+  LOST_REVENUE_PER_REPORT, RESTOCK_RETURN_RATE,
+  type SosLite, type FeedbackLite, type RestockCluster,
+} from '@/lib/insights'
 
 const DemandMap = dynamic(() => import('@/components/DemandMap'), { ssr: false })
 
 const ADMIN_PASSCODE = 'madmix'
 
 interface ScanRow { pin_code: string | null; product_name: string | null; created_at: string }
-interface SosRow {
-  pin_code: string | null; product: string | null; flavour: string | null; product_name: string | null
-  city: string | null; location_lat: number | null; location_lng: number | null; created_at: string
-}
+interface SosRow extends SosLite { id: string; location_lat: number | null; location_lng: number | null }
+interface FeedbackRow extends FeedbackLite { id: string }
 
 const ASSOCIATIONS: { category: string; icon: string; pairs: string[]; brands: string[] }[] = [
   { category: 'Bhujia', icon: '🌶️',
@@ -40,8 +43,11 @@ export default function AdminPage() {
 
   const [scans, setScans] = useState<ScanRow[]>([])
   const [sos, setSos] = useState<SosRow[]>([])
+  const [feedback, setFeedback] = useState<FeedbackRow[]>([])
   const [loading, setLoading] = useState(true)
   const [goal, setGoal] = useState('')
+  const [showAI, setShowAI] = useState(false)
+  const [restockingKey, setRestockingKey] = useState('')
 
   const summary = useMemo(() => getSalesSummary(), [])
 
@@ -52,14 +58,17 @@ export default function AdminPage() {
   useEffect(() => {
     if (!authed) return
     async function load() {
-      const [s, r] = await Promise.all([
+      const [s, r, f] = await Promise.all([
         supabase.from('scans').select('pin_code, product_name, created_at'),
         supabase.from('sos_reports').select('*'),
+        supabase.from('feedback').select('*'),
       ])
       if (s.error) console.error('[Admin] scans load failed:', s.error.message)
       if (r.error) console.error('[Admin] sos load failed:', r.error.message)
+      if (f.error) console.error('[Admin] feedback load failed:', f.error.message)
       setScans((s.data as ScanRow[]) || [])
       setSos((r.data as SosRow[]) || [])
+      setFeedback((f.data as FeedbackRow[]) || [])
       setLoading(false)
     }
     load()
@@ -84,15 +93,19 @@ export default function AdminPage() {
       const [lat, lng] = r.location_lat && r.location_lng ? [r.location_lat, r.location_lng] : pinToCoord(r.pin_code || '')
       if (!unmet.has(k)) unmet.set(k, { pin_code: r.pin_code || '—', lat, lng, count: 0, status: 'unmet', products: [], flavours: [], city: r.city || '', latest: r.created_at })
       const p = unmet.get(k)!; p.count++
-      const prod = r.product || r.product_name?.split('—')[0]?.trim(); const fla = r.flavour || r.product_name?.split('—')[1]?.trim()
-      if (prod && !p.products.includes(prod)) p.products.push(prod)
-      if (fla && !p.flavours.includes(fla)) p.flavours.push(fla)
+      const { product, flavour } = splitProduct(r)
+      if (product !== '—' && !p.products.includes(product)) p.products.push(product)
+      if (flavour !== '—' && !p.flavours.includes(flavour)) p.flavours.push(flavour)
     })
     return [...supplied.values(), ...unmet.values()]
   }, [scans, sos])
 
   const greenCount = points.filter(p => p.status === 'supplied').length
   const redCount = points.filter(p => p.status === 'unmet').length
+
+  const hidden = useMemo(() => computeHiddenRevenue(sos), [sos])
+  const restock = useMemo(() => computeRestock(sos), [sos])
+  const exec = useMemo(() => buildExecSummary(sos, feedback), [sos, feedback])
 
   const plan = useMemo(() => {
     const target = parseFloat(goal.replace(/[^\d.]/g, ''))
@@ -104,6 +117,24 @@ export default function AdminPage() {
     const newPins = Math.max(1, Math.ceil(extraUnits / 900))
     return { target, projected, gap, extraUnits, extraPerDay, newPins, onTrack: gap <= 0 }
   }, [goal, summary])
+
+  // Mark a product available again in a location → notify waiting customers
+  async function markRestocked(c: RestockCluster) {
+    const key = `${c.pin_code}|${c.product}|${c.flavour}`
+    setRestockingKey(key)
+    const ids = sos
+      .filter(r => !r.notified && r.customer_phone)
+      .filter(r => { const sp = splitProduct(r); return (r.pin_code || '—') === c.pin_code && sp.product === c.product && sp.flavour === c.flavour })
+      .map(r => r.id)
+    if (ids.length) {
+      const { error } = await supabase.from('sos_reports')
+        .update({ notified: true, restocked_at: new Date().toISOString() })
+        .in('id', ids)
+      if (error) console.error('[Admin] restock notify failed:', error.message)
+      else setSos(prev => prev.map(r => ids.includes(r.id) ? { ...r, notified: true } : r))
+    }
+    setRestockingKey('')
+  }
 
   function unlock(e: React.FormEvent) {
     e.preventDefault()
@@ -162,6 +193,98 @@ export default function AdminPage() {
                 </div>
               </div>
               {loading ? <div className="text-center py-20" style={{ color: '#6E6788' }}>Loading map…</div> : <DemandMap points={points} height="70vh" />}
+            </section>
+          </Reveal>
+
+          {/* 💰 Hidden Revenue */}
+          <Reveal delay={60}>
+            <section className="bg-white rounded-3xl p-6 shadow-sm">
+              <h2 className="text-xl font-bold mb-1" style={{ color: '#2C2347' }}>💰 Hidden Revenue</h2>
+              <p className="text-sm mb-4" style={{ color: '#6E6788' }}>
+                Revenue likely lost because customers couldn&apos;t find products. Each stock-out ≈ {inr(LOST_REVENUE_PER_REPORT)} of missed sales (a month of repeat purchase at the ₹{BLENDED_UNIT_PRICE} blended price).
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                <div className="rounded-2xl p-5" style={{ backgroundColor: '#FCEDEF' }}>
+                  <p className="text-sm" style={{ color: '#6E6788' }}>Estimated Missed Revenue · This Week</p>
+                  <p className="text-3xl font-bold mt-1" style={{ color: '#E5394E' }}>{inr(hidden.week)}</p>
+                </div>
+                <div className="rounded-2xl p-5" style={{ backgroundColor: '#FCEDEF' }}>
+                  <p className="text-sm" style={{ color: '#6E6788' }}>Estimated Missed Revenue · This Month</p>
+                  <p className="text-3xl font-bold mt-1" style={{ color: '#E5394E' }}>{inr(hidden.month)}</p>
+                </div>
+              </div>
+
+              <h3 className="font-bold mb-2" style={{ color: '#2C2347' }}>Top Lost Opportunities</h3>
+              {hidden.opportunities.length === 0 ? (
+                <p className="text-sm" style={{ color: '#6E6788' }}>No stock-out reports yet.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl" style={{ border: '1px solid #EFE9FB' }}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ backgroundColor: '#7C5CC4' }}>
+                        {['PIN Code', 'Product', 'Flavour', 'Est. Revenue Lost'].map(h => (
+                          <th key={h} className={`px-4 py-2 text-white font-semibold ${h === 'Est. Revenue Lost' ? 'text-right' : 'text-left'}`}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {hidden.opportunities.slice(0, 10).map((o, i) => (
+                        <tr key={`${o.pin_code}-${o.product}-${o.flavour}`} style={{ backgroundColor: i % 2 ? 'white' : '#F8F5FE' }}>
+                          <td className="px-4 py-2 font-mono" style={{ color: '#2C2347' }}>{o.pin_code}</td>
+                          <td className="px-4 py-2" style={{ color: '#2C2347' }}>{o.product}</td>
+                          <td className="px-4 py-2" style={{ color: '#6E6788' }}>{o.flavour}</td>
+                          <td className="px-4 py-2 text-right font-bold" style={{ color: '#E5394E' }}>{inr(o.revenueLost)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </Reveal>
+
+          {/* 🔔 Restock Recovery */}
+          <Reveal delay={60}>
+            <section className="bg-white rounded-3xl p-6 shadow-sm">
+              <h2 className="text-xl font-bold mb-1" style={{ color: '#2C2347' }}>🔔 Restock Recovery</h2>
+              <p className="text-sm mb-4" style={{ color: '#6E6788' }}>
+                Close the loop — notify customers who reported a stock-out once the product is back, and track how many you re-engage.
+              </p>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+                <Stat label="Customers waiting" value={restock.waiting.toLocaleString('en-IN')} color="#EE7B30" />
+                <Stat label="Notifications sent" value={restock.sent.toLocaleString('en-IN')} color="#7C5CC4" />
+                <Stat label="Est. recovered customers" value={restock.recoveredCustomers.toLocaleString('en-IN')} color="#34B5E5" />
+                <Stat label="Est. recovered revenue" value={inr(restock.recoveredRevenue)} color="#7CBE3F" />
+              </div>
+
+              <h3 className="font-bold mb-2" style={{ color: '#2C2347' }}>Mark a product back in stock → notify waiting customers</h3>
+              {restock.clusters.length === 0 ? (
+                <p className="text-sm" style={{ color: '#6E6788' }}>No customers are currently waiting for a restock.</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {restock.clusters.map(c => {
+                    const key = `${c.pin_code}|${c.product}|${c.flavour}`
+                    return (
+                      <div key={key} className="flex items-center justify-between gap-3 p-3 rounded-xl heat-cell" style={{ backgroundColor: '#FBF3DA' }}>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate" style={{ color: '#2C2347' }}>{c.product} — {c.flavour}</p>
+                          <p className="text-xs" style={{ color: '#6E6788' }}>PIN {c.pin_code} · {c.waiting} waiting</p>
+                        </div>
+                        <button
+                          onClick={() => markRestocked(c)} disabled={restockingKey === key}
+                          className="px-4 py-2 rounded-full text-white font-semibold text-xs whitespace-nowrap transition-transform hover:scale-105 active:scale-95 disabled:opacity-60"
+                          style={{ backgroundColor: '#7CBE3F' }}
+                        >
+                          {restockingKey === key ? 'Notifying…' : `✅ Mark restocked & notify`}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              <p className="text-xs mt-3" style={{ color: '#6E6788' }}>
+                Assumes {Math.round(RESTOCK_RETURN_RATE * 100)}% of notified customers return to purchase.
+              </p>
             </section>
           </Reveal>
 
@@ -267,6 +390,62 @@ export default function AdminPage() {
           <Link href="/" className="text-sm" style={{ color: '#6E6788' }}>← Back to site</Link>
         </div>
       </main>
+
+      {/* ✨ Floating AI assistant */}
+      <button
+        onClick={() => setShowAI(true)}
+        className="fixed bottom-5 right-5 z-40 rounded-2xl px-5 py-3 text-white font-semibold text-sm shadow-xl flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+        style={{ background: 'linear-gradient(135deg, #7C5CC4, #EA4C89)', boxShadow: '0 12px 28px -8px rgba(124,92,196,0.85)' }}
+      >
+        <span className="animate-sparkle">✨</span> AI Summary
+      </button>
+
+      {/* AI side panel */}
+      <div
+        className="fixed inset-0 z-50"
+        style={{ pointerEvents: showAI ? 'auto' : 'none' }}
+        aria-hidden={!showAI}
+      >
+        <div
+          onClick={() => setShowAI(false)}
+          className="absolute inset-0 transition-opacity duration-300"
+          style={{ backgroundColor: 'rgba(44,35,71,0.45)', opacity: showAI ? 1 : 0 }}
+        />
+        <aside
+          className="absolute top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl overflow-y-auto transition-transform duration-300"
+          style={{ transform: showAI ? 'translateX(0)' : 'translateX(100%)' }}
+        >
+          <div className="p-6">
+            <div className="flex items-start justify-between mb-1">
+              <h2 className="text-xl font-extrabold flex items-center gap-2" style={{ color: '#2C2347' }}>
+                <span style={{ background: 'linear-gradient(135deg, #7C5CC4, #EA4C89)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>✨ AI Executive Summary</span>
+              </h2>
+              <button onClick={() => setShowAI(false)} className="text-2xl leading-none" style={{ color: '#6E6788' }} aria-label="Close">×</button>
+            </div>
+            <p className="text-xs mb-5" style={{ color: '#6E6788' }}>Auto-generated from live SOS &amp; feedback data.</p>
+
+            <h3 className="font-bold mb-2" style={{ color: '#2C2347' }}>📈 Weekly Consumer Intelligence Summary</h3>
+            <ul className="text-sm space-y-2 mb-6">
+              {exec.insights.length ? exec.insights.map((s, i) => (
+                <li key={i} className="flex gap-2" style={{ color: '#2C2347' }}><span>•</span><span>{s}</span></li>
+              )) : <li className="text-sm" style={{ color: '#6E6788' }}>Not enough data yet — insights appear as reports arrive.</li>}
+            </ul>
+
+            <h3 className="font-bold mb-2" style={{ color: '#2C2347' }}>✅ Recommended Actions</h3>
+            <ul className="text-sm space-y-2 mb-6">
+              {exec.actions.map((s, i) => (
+                <li key={i} className="flex gap-2" style={{ color: '#2C2347' }}><span>→</span><span>{s}</span></li>
+              ))}
+            </ul>
+
+            <div className="rounded-2xl p-5 text-white" style={{ background: 'linear-gradient(135deg, #7CBE3F, #2F855A)' }}>
+              <p className="text-sm opacity-90">💸 Estimated Recoverable Revenue</p>
+              <p className="text-3xl font-bold mt-1">{inr(exec.recoverableRevenue)}</p>
+              <p className="text-xs opacity-90 mt-1">If the recommended actions are implemented this month.</p>
+            </div>
+          </div>
+        </aside>
+      </div>
     </>
   )
 }

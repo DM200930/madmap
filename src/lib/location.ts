@@ -4,6 +4,57 @@ export interface ResolvedLocation {
   pin_code: string
   city: string
   state: string
+  accuracy?: number
+}
+
+/**
+ * Capture the best GPS fix, aiming for ~targetAccuracy metres or better.
+ * Uses watchPosition and keeps the most accurate reading until the target is
+ * met or the timeout elapses, then returns the best fix obtained.
+ */
+export function getHighAccuracyPosition(
+  targetAccuracy = 50,
+  timeoutMs = 12000
+): Promise<{ lat: number; lng: number; accuracy: number }> {
+  return new Promise((resolve, reject) => {
+    if (!navigator?.geolocation) {
+      reject(new Error('Geolocation is not supported by this browser.'))
+      return
+    }
+    let best: { lat: number; lng: number; accuracy: number } | null = null
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      navigator.geolocation.clearWatch(id)
+      clearTimeout(timer)
+      if (best) resolve(best)
+      else reject(new Error('Could not obtain a location fix.'))
+    }
+    const id = navigator.geolocation.watchPosition(
+      pos => {
+        const acc = pos.coords.accuracy ?? 9999
+        if (!best || acc < best.accuracy) {
+          best = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: acc }
+        }
+        if (acc <= targetAccuracy) finish()
+      },
+      err => { if (!best) { settled = true; navigator.geolocation.clearWatch(id); clearTimeout(timer); reject(err) } },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: timeoutMs }
+    )
+    const timer = setTimeout(finish, timeoutMs)
+  })
+}
+
+/** High-accuracy GPS fix, reverse-geocoded to PIN/city/state. */
+export async function captureHighAccuracyLocation(targetAccuracy = 50): Promise<ResolvedLocation> {
+  const { lat, lng, accuracy } = await getHighAccuracyPosition(targetAccuracy)
+  try {
+    const r = await reverseGeocode(lat, lng)
+    return { ...r, accuracy }
+  } catch {
+    return { lat, lng, pin_code: '', city: '', state: '', accuracy }
+  }
 }
 
 /** Reverse-geocode coordinates into PIN / city / state via BigDataCloud (no key). */
