@@ -19,10 +19,15 @@ const KNOWN_PIN_COORDS: Record<string, [number, number]> = {
   '122001': [28.4595, 77.0266],
 }
 
+// Mainland-India bounding box (kept conservative so synthetic fallback points
+// always land on Indian territory, never outside the country).
+const INDIA_LAT_MIN = 8.4, INDIA_LAT_MAX = 35.5
+const INDIA_LNG_MIN = 68.7, INDIA_LNG_MAX = 96.0
+
 export function pinToCoord(pin: string): [number, number] {
   const digits = (pin || '').replace(/\D/g, '').padEnd(6, '0').slice(0, 6)
   if (KNOWN_PIN_COORDS[digits]) return KNOWN_PIN_COORDS[digits]
-  const lat = 6 + (parseInt(digits.slice(0, 3), 10) / 999) * 20
-  const lng = 68 + (parseInt(digits.slice(3, 6), 10) / 999) * 25
+  const lat = INDIA_LAT_MIN + (parseInt(digits.slice(0, 3), 10) / 999) * (INDIA_LAT_MAX - INDIA_LAT_MIN)
+  const lng = INDIA_LNG_MIN + (parseInt(digits.slice(3, 6), 10) / 999) * (INDIA_LNG_MAX - INDIA_LNG_MIN)
   return [lat, lng]
 }

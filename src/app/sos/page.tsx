@@ -34,7 +34,7 @@ export default function SOSPage() {
       if (file) screenshot_url = await uploadScreenshot(file)
 
       const points = POINTS.sos_report
-      const loc = location.share ? location.loc : null
+      const loc = location.loc // GPS result when sharing, geocoded PIN result when manual
       const payload = {
         product: category,
         flavour,

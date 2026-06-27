@@ -31,7 +31,7 @@ export default function FeedbackPage() {
     setLoading(true)
     try {
       const points = POINTS.feedback
-      const loc = location.share ? location.loc : null
+      const loc = location.loc // GPS result when sharing, geocoded PIN result when manual
       const payload = {
         product: category,
         flavour,
