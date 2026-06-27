@@ -119,11 +119,18 @@ export default function RewardSuccess({
           </table>
         </div>
 
+        {/* Why it matters */}
+        <p className="text-sm mb-5 rounded-2xl p-3" style={{ color: '#6E6788', backgroundColor: '#F4F0FD' }}>
+          Your contribution helps MadMix improve product availability and shape future flavours. 💜
+        </p>
+
         <div className="flex flex-col gap-3">
-          <Link href="/rewards" className="block w-full py-3 rounded-full text-white font-semibold" style={{ backgroundColor: '#7C5CC4' }}>
+          <Link href="/" className="block w-full py-3 rounded-full text-white font-semibold transition-transform hover:scale-105 active:scale-95" style={{ backgroundColor: '#7C5CC4' }}>
+            🏠 Return to Home
+          </Link>
+          <Link href="/rewards" className="block w-full py-3 rounded-full font-semibold border-2" style={{ borderColor: '#7C5CC4', color: '#7C5CC4' }}>
             🏆 View My Rewards
           </Link>
-          <Link href="/" className="text-sm" style={{ color: '#6E6788' }}>Back to Home</Link>
         </div>
       </div>
     </main>

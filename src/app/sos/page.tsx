@@ -1,15 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import TopNav from '@/components/TopNav'
 import ProductSelect from '@/components/ProductSelect'
-import RewardSuccess from '@/components/RewardSuccess'
+import LocationPicker, { emptyLocation, hasLocation, type LocationState } from '@/components/LocationPicker'
 import { POINTS } from '@/lib/types'
-import { captureLocation, type ResolvedLocation } from '@/lib/location'
 import { uploadScreenshot } from '@/lib/upload'
 
 export default function SOSPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -17,32 +18,14 @@ export default function SOSPage() {
   const [flavour, setFlavour] = useState('')
   const [phone, setPhone] = useState('')
   const [file, setFile] = useState<File | null>(null)
-
-  const [loc, setLoc] = useState<ResolvedLocation | null>(null)
-  const [locState, setLocState] = useState<'idle' | 'detecting' | 'ready' | 'denied'>('detecting')
-
-  const [done, setDone] = useState(false)
-  const [earned, setEarned] = useState(0)
-  const [currentPoints, setCurrentPoints] = useState(0)
-
-  // Silently request location + reverse geocode on open (no manual PIN, no card)
-  useEffect(() => {
-    let cancelled = false
-    setLocState('detecting')
-    captureLocation()
-      .then(r => { if (!cancelled) { setLoc(r); setLocState('ready') } })
-      .catch(() => { if (!cancelled) setLocState('denied') })
-    return () => { cancelled = true }
-  }, [])
+  const [location, setLocation] = useState<LocationState>(emptyLocation)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
-    if (!category || !flavour) {
-      setError('Please choose which product you couldn’t find.')
-      return
-    }
+    if (!category || !flavour) { setError('Please choose which product you couldn’t find.'); return }
+    if (!hasLocation(location)) { setError('Please share your location or enter a PIN code.'); return }
     setLoading(true)
 
     try {
@@ -51,11 +34,12 @@ export default function SOSPage() {
       if (file) screenshot_url = await uploadScreenshot(file)
 
       const points = POINTS.sos_report
+      const loc = location.share ? location.loc : null
       const payload = {
         product: category,
         flavour,
         product_name: `${category} — ${flavour}`,
-        pin_code: loc?.pin_code || null,
+        pin_code: location.share ? (loc?.pin_code || null) : (location.manualPin.trim() || null),
         city: loc?.city || null,
         state: loc?.state || null,
         location_lat: loc?.lat ?? null,
@@ -74,41 +58,21 @@ export default function SOSPage() {
         return
       }
 
-      // Reward points if we know who to credit
       let total = points
       if (phone) {
         try { localStorage.setItem('madmap_phone', phone) } catch {}
-        const { error: rpcErr } = await supabase.rpc('add_customer_points', {
-          p_phone: phone, p_points: points, p_scan: false,
-        })
+        const { error: rpcErr } = await supabase.rpc('add_customer_points', { p_phone: phone, p_points: points, p_scan: false })
         if (rpcErr) console.error('[SOS] points RPC failed:', rpcErr.message)
         const { data: cust } = await supabase.from('customers').select('total_points').eq('phone', phone).single()
         if (cust?.total_points) total = cust.total_points
       }
 
-      setEarned(points)
-      setCurrentPoints(total)
-      setDone(true)
+      router.push(`/success?earned=${points}&points=${total}&source=sos`)
     } catch (err) {
       console.error('[SOS] unexpected error:', err)
       setError('Something went wrong. Please try again.')
-    } finally {
       setLoading(false)
     }
-  }
-
-  if (done) {
-    return (
-      <>
-        <TopNav />
-        <RewardSuccess
-          earned={earned}
-          currentPoints={currentPoints}
-          headline="🎉 Thanks for helping MadMix!"
-          subtext={`Your area is on our demand map. You earned +${earned} points for the report.`}
-        />
-      </>
-    )
   }
 
   return (
@@ -131,6 +95,8 @@ export default function SOSPage() {
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <ProductSelect category={category} flavour={flavour} onCategory={setCategory} onFlavour={setFlavour} accent="#E5394E" />
+
+              <LocationPicker accent="#E5394E" onChange={setLocation} />
 
               {/* Evidence upload */}
               <div>
@@ -169,12 +135,6 @@ export default function SOSPage() {
               >
                 {loading ? 'Reporting…' : '🆘 Report Stockout'}
               </button>
-
-              <p className="text-xs text-center" style={{ color: '#6E6788' }}>
-                {locState === 'detecting' && '📍 Detecting your location…'}
-                {locState === 'ready' && `📍 Location captured${loc?.city ? ` · ${loc.city}` : ''}${loc?.pin_code ? ` · ${loc.pin_code}` : ''}`}
-                {locState === 'denied' && '📍 Location off — your report still helps, but enabling it pinpoints demand.'}
-              </p>
             </form>
           </div>
         </div>
@@ -182,5 +142,3 @@ export default function SOSPage() {
     </>
   )
 }
-
-// custom file button colour
