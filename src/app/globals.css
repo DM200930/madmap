@@ -9,7 +9,8 @@
   --brand-blue: #34B5E5;    /* sky-blue puffs */
   --brand-pink: #EA4C89;    /* magenta raisins */
   --brand-red: #E5394E;     /* SOS / high demand */
-  --bg-cream: #F7F4FD;      /* soft lavender-white */
+  --bg-lavender: #E7DEFA;   /* noticeable, soft lavender for the whole screen */
+  --bg-lavender-deep: #DCD0F6;
   --text-charcoal: #2C2347; /* deep purple-charcoal */
   --text-slate: #6E6788;    /* muted purple-slate */
 }
@@ -25,13 +26,13 @@
   --color-blue: #34B5E5;
   --color-pink: #EA4C89;
   --color-red: #E5394E;
-  --color-cream: #F7F4FD;
+  --color-cream: #E7DEFA;
   --color-charcoal: #2C2347;
   --color-slate: #6E6788;
 }
 
 body {
-  background-color: var(--bg-cream);
+  background-color: var(--bg-lavender);
   color: var(--text-charcoal);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -53,13 +54,40 @@ body {
   50%      { box-shadow: 0 0 0 14px rgba(124,92,196,0); }
 }
 
+@keyframes pulse-glow-red {
+  0%,100% { box-shadow: 0 0 0 0   rgba(229,57,78,0.55); }
+  50%      { box-shadow: 0 0 0 18px rgba(229,57,78,0); }
+}
+
 @keyframes slide-up {
   from { transform: translateY(20px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
 
+/* Smooth page transitions */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float-pack {
+  0%,100% { transform: translateY(0) rotate(var(--rot, -28deg)); }
+  50%     { transform: translateY(-10px) rotate(var(--rot, -28deg)); }
+}
+
+@keyframes confetti-fall {
+  0%   { transform: translateY(-10px) rotate(0); opacity: 1; }
+  100% { transform: translateY(120px) rotate(360deg); opacity: 0; }
+}
+
 .animate-count-up   { animation: count-up  0.5s ease-out forwards; }
 .animate-celebrate  { animation: celebrate 0.6s ease-in-out; }
 .animate-pulse-glow { animation: pulse-glow 2s infinite; }
+.animate-pulse-glow-red { animation: pulse-glow-red 1.8s infinite; }
 .animate-slide-up   { animation: slide-up 0.4s ease-out forwards; }
-.progress-bar       { transition: width 1s ease-in-out; }
+.animate-page       { animation: page-enter 0.45s ease-out both; }
+.progress-bar       { transition: width 1.1s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* Heatmap colour transitions */
+.heat-cell          { transition: background-color 0.6s ease, color 0.6s ease; }
+.leaflet-interactive { transition: fill 0.6s ease, stroke 0.6s ease; }

@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import TopNav from '@/components/TopNav'
 
 const DashboardHeatmap = dynamic(() => import('@/components/DashboardHeatmap'), { ssr: false })
 
@@ -90,7 +91,9 @@ export default function DashboardPage() {
   }, [])
 
   return (
-    <main className="min-h-screen p-6" style={{ backgroundColor: '#F7F4FD' }}>
+    <>
+      <TopNav />
+      <main className="flex-1 p-6 animate-page">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -257,6 +260,7 @@ export default function DashboardPage() {
         )}
       </div>
     </main>
+    </>
   )
 }
 
