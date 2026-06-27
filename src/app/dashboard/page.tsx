@@ -22,9 +22,9 @@ interface Stats {
 }
 
 function DemandBadge({ count }: { count: number }) {
-  if (count >= 5) return <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ backgroundColor: '#EF4444' }}>🔴 High</span>
-  if (count >= 2) return <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ backgroundColor: '#FBBF24', color: '#1F2937' }}>🟡 Medium</span>
-  return <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ backgroundColor: '#22C55E20', color: '#22C55E' }}>🟢 Low</span>
+  if (count >= 5) return <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ backgroundColor: '#E5394E' }}>🔴 High</span>
+  if (count >= 2) return <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ backgroundColor: '#F5B301', color: '#2C2347' }}>🟡 Medium</span>
+  return <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ backgroundColor: '#7CBE3F20', color: '#7CBE3F' }}>🟢 Low</span>
 }
 
 export default function DashboardPage() {
@@ -90,17 +90,17 @@ export default function DashboardPage() {
   }, [])
 
   return (
-    <main className="min-h-screen p-6" style={{ backgroundColor: '#FFF9F2' }}>
+    <main className="min-h-screen p-6" style={{ backgroundColor: '#F7F4FD' }}>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#1F2937' }}>
+            <h1 className="text-2xl font-bold" style={{ color: '#2C2347' }}>
               🗺️ MadMap Dashboard
             </h1>
-            <p className="text-sm" style={{ color: '#6B7280' }}>Consumer Intelligence — Internal View</p>
+            <p className="text-sm" style={{ color: '#6E6788' }}>Consumer Intelligence — Internal View</p>
           </div>
-          <Link href="/" className="text-sm" style={{ color: '#6B7280' }}>← Home</Link>
+          <Link href="/" className="text-sm" style={{ color: '#6E6788' }}>← Home</Link>
         </div>
 
         {/* Tabs */}
@@ -111,8 +111,8 @@ export default function DashboardPage() {
               onClick={() => setActiveTab(tab)}
               className="px-4 py-2 rounded-full text-sm font-medium capitalize transition-all"
               style={activeTab === tab
-                ? { backgroundColor: '#F97316', color: 'white' }
-                : { backgroundColor: 'white', color: '#6B7280' }
+                ? { backgroundColor: '#7C5CC4', color: 'white' }
+                : { backgroundColor: 'white', color: '#6E6788' }
               }
             >
               {tab === 'overview' ? '📊 Overview' : tab === 'heatmap' ? '🗺️ Demand Heatmap' : '📦 Scans'}
@@ -121,7 +121,7 @@ export default function DashboardPage() {
         </div>
 
         {loading && (
-          <div className="text-center py-12" style={{ color: '#6B7280' }}>
+          <div className="text-center py-12" style={{ color: '#6E6788' }}>
             Loading data…
           </div>
         )}
@@ -131,36 +131,36 @@ export default function DashboardPage() {
             {/* KPI cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {[
-                { label: 'Total Scans', value: stats.total_scans, icon: '📦', color: '#F97316' },
-                { label: 'SOS Reports', value: stats.total_sos, icon: '🆘', color: '#EF4444' },
-                { label: 'Customers', value: stats.total_customers, icon: '👥', color: '#22C55E' },
+                { label: 'Total Scans', value: stats.total_scans, icon: '📦', color: '#7C5CC4' },
+                { label: 'SOS Reports', value: stats.total_sos, icon: '🆘', color: '#E5394E' },
+                { label: 'Customers', value: stats.total_customers, icon: '👥', color: '#7CBE3F' },
               ].map(kpi => (
                 <div key={kpi.label} className="bg-white rounded-2xl p-5 shadow-sm text-center">
                   <p className="text-3xl mb-1">{kpi.icon}</p>
                   <p className="text-3xl font-bold" style={{ color: kpi.color }}>{kpi.value}</p>
-                  <p className="text-xs mt-1" style={{ color: '#6B7280' }}>{kpi.label}</p>
+                  <p className="text-xs mt-1" style={{ color: '#6E6788' }}>{kpi.label}</p>
                 </div>
               ))}
             </div>
 
             {/* Top products */}
             <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h2 className="font-bold mb-4" style={{ color: '#1F2937' }}>Top Scanned Products</h2>
+              <h2 className="font-bold mb-4" style={{ color: '#2C2347' }}>Top Scanned Products</h2>
               {stats.top_products.length === 0 && (
-                <p className="text-sm" style={{ color: '#6B7280' }}>No scan data yet.</p>
+                <p className="text-sm" style={{ color: '#6E6788' }}>No scan data yet.</p>
               )}
               {stats.top_products.map((p, i) => (
                 <div key={p.product_name} className="mb-3">
                   <div className="flex justify-between text-sm mb-1">
-                    <span style={{ color: '#1F2937' }}>{p.product_name}</span>
-                    <span className="font-bold" style={{ color: '#F97316' }}>{p.count}</span>
+                    <span style={{ color: '#2C2347' }}>{p.product_name}</span>
+                    <span className="font-bold" style={{ color: '#7C5CC4' }}>{p.count}</span>
                   </div>
                   <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#F3F4F6' }}>
                     <div
                       className="h-full rounded-full progress-bar"
                       style={{
                         width: `${(p.count / (stats.top_products[0]?.count || 1)) * 100}%`,
-                        backgroundColor: i === 0 ? '#F97316' : i === 1 ? '#FBBF24' : '#22C55E',
+                        backgroundColor: i === 0 ? '#7C5CC4' : i === 1 ? '#F5B301' : '#7CBE3F',
                       }}
                     />
                   </div>
@@ -170,19 +170,19 @@ export default function DashboardPage() {
 
             {/* High demand PINs */}
             <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h2 className="font-bold mb-1" style={{ color: '#1F2937' }}>High Demand Areas</h2>
-              <p className="text-xs mb-4" style={{ color: '#6B7280' }}>PIN codes with the most SOS reports</p>
+              <h2 className="font-bold mb-1" style={{ color: '#2C2347' }}>High Demand Areas</h2>
+              <p className="text-xs mb-4" style={{ color: '#6E6788' }}>PIN codes with the most SOS reports</p>
               {heatmap.slice(0, 5).length === 0 && (
-                <p className="text-sm" style={{ color: '#6B7280' }}>No SOS reports yet.</p>
+                <p className="text-sm" style={{ color: '#6E6788' }}>No SOS reports yet.</p>
               )}
               {heatmap.slice(0, 5).map(pin => (
                 <div key={pin.pin_code} className="flex items-center justify-between py-3 border-b last:border-0" style={{ borderColor: '#F3F4F6' }}>
                   <div>
-                    <p className="font-mono font-bold text-sm" style={{ color: '#1F2937' }}>{pin.pin_code}</p>
-                    <p className="text-xs" style={{ color: '#6B7280' }}>{pin.products.join(', ')}</p>
+                    <p className="font-mono font-bold text-sm" style={{ color: '#2C2347' }}>{pin.pin_code}</p>
+                    <p className="text-xs" style={{ color: '#6E6788' }}>{pin.products.join(', ')}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold" style={{ color: '#EF4444' }}>{pin.report_count}</span>
+                    <span className="text-sm font-bold" style={{ color: '#E5394E' }}>{pin.report_count}</span>
                     <DemandBadge count={pin.report_count} />
                   </div>
                 </div>
@@ -195,8 +195,8 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="font-bold" style={{ color: '#1F2937' }}>Demand Heatmap by PIN Code</h2>
-                <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
+                <h2 className="font-bold" style={{ color: '#2C2347' }}>Demand Heatmap by PIN Code</h2>
+                <p className="text-sm mt-1" style={{ color: '#6E6788' }}>
                   Real customer reports shown on a map. Hotter circles mean more requests from that postal cluster.
                 </p>
               </div>
@@ -210,7 +210,7 @@ export default function DashboardPage() {
             <DashboardHeatmap heatmap={heatmap} />
 
             {heatmap.length === 0 ? (
-              <div className="text-center py-12" style={{ color: '#6B7280' }}>
+              <div className="text-center py-12" style={{ color: '#6E6788' }}>
                 <p className="text-4xl mb-3">📍</p>
                 <p>No SOS reports yet. Reports will appear here as customers submit them.</p>
               </div>
@@ -221,20 +221,20 @@ export default function DashboardPage() {
                     key={pin.pin_code}
                     className="flex items-center gap-4 p-4 rounded-xl transition-all hover:shadow-md"
                     style={{
-                      backgroundColor: pin.report_count >= 5 ? '#FEF2F2' : pin.report_count >= 2 ? '#FFFBEB' : '#F0FDF4',
+                      backgroundColor: pin.report_count >= 5 ? '#FCEDEF' : pin.report_count >= 2 ? '#FFFBEB' : '#F2F8E9',
                     }}
                   >
                     <div
                       className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white flex-shrink-0"
                       style={{
-                        backgroundColor: pin.report_count >= 5 ? '#EF4444' : pin.report_count >= 2 ? '#FBBF24' : '#22C55E',
+                        backgroundColor: pin.report_count >= 5 ? '#E5394E' : pin.report_count >= 2 ? '#F5B301' : '#7CBE3F',
                       }}
                     >
                       {pin.report_count}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-mono font-bold" style={{ color: '#1F2937' }}>{pin.pin_code}</p>
-                      <p className="text-xs truncate" style={{ color: '#6B7280' }}>{pin.products.join(' · ')}</p>
+                      <p className="font-mono font-bold" style={{ color: '#2C2347' }}>{pin.pin_code}</p>
+                      <p className="text-xs truncate" style={{ color: '#6E6788' }}>{pin.products.join(' · ')}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
                       <DemandBadge count={pin.report_count} />
@@ -251,7 +251,7 @@ export default function DashboardPage() {
 
         {!loading && activeTab === 'scans' && (
           <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h2 className="font-bold mb-4" style={{ color: '#1F2937' }}>QR Scan Analytics</h2>
+            <h2 className="font-bold mb-4" style={{ color: '#2C2347' }}>QR Scan Analytics</h2>
             <ScanTable />
           </div>
         )}
@@ -278,9 +278,9 @@ function ScanTable() {
       })
   }, [])
 
-  if (loading) return <p className="text-sm" style={{ color: '#6B7280' }}>Loading…</p>
+  if (loading) return <p className="text-sm" style={{ color: '#6E6788' }}>Loading…</p>
   if (scans.length === 0) return (
-    <div className="text-center py-8" style={{ color: '#6B7280' }}>
+    <div className="text-center py-8" style={{ color: '#6E6788' }}>
       <p className="text-3xl mb-2">📦</p>
       <p>No scans yet. Share QR codes to start collecting data.</p>
     </div>
@@ -292,17 +292,17 @@ function ScanTable() {
         <thead>
           <tr style={{ borderBottom: '2px solid #F3F4F6' }}>
             {['PIN', 'Product', 'Platform', 'Rating', 'Date'].map(h => (
-              <th key={h} className="text-left pb-3 pr-4 font-semibold" style={{ color: '#6B7280' }}>{h}</th>
+              <th key={h} className="text-left pb-3 pr-4 font-semibold" style={{ color: '#6E6788' }}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {scans.map(s => (
             <tr key={s.id} style={{ borderBottom: '1px solid #F9FAFB' }}>
-              <td className="py-2 pr-4 font-mono font-medium" style={{ color: '#1F2937' }}>{s.pin_code}</td>
-              <td className="py-2 pr-4" style={{ color: '#1F2937' }}>{s.product_name.replace('MadMix ', '')}</td>
-              <td className="py-2 pr-4 capitalize" style={{ color: '#6B7280' }}>{s.platform}</td>
-              <td className="py-2 pr-4" style={{ color: '#FBBF24' }}>{'⭐'.repeat(s.rating)}</td>
+              <td className="py-2 pr-4 font-mono font-medium" style={{ color: '#2C2347' }}>{s.pin_code}</td>
+              <td className="py-2 pr-4" style={{ color: '#2C2347' }}>{s.product_name.replace('MadMix ', '')}</td>
+              <td className="py-2 pr-4 capitalize" style={{ color: '#6E6788' }}>{s.platform}</td>
+              <td className="py-2 pr-4" style={{ color: '#F5B301' }}>{'⭐'.repeat(s.rating)}</td>
               <td className="py-2" style={{ color: '#9CA3AF' }}>{new Date(s.created_at).toLocaleDateString('en-IN')}</td>
             </tr>
           ))}

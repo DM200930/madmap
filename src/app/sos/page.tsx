@@ -77,32 +77,32 @@ export default function SOSPage() {
 
   if (submitted) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: '#FFF9F2' }}>
+      <main className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: '#F7F4FD' }}>
         <div className="bg-white rounded-2xl p-8 shadow-sm max-w-sm w-full text-center animate-slide-up">
           <div className="text-6xl mb-4 animate-celebrate">📍</div>
-          <h1 className="text-2xl font-bold mb-2" style={{ color: '#1F2937' }}>Report Received!</h1>
-          <p className="text-sm mb-4" style={{ color: '#6B7280' }}>
-            Your report is now pending review. Once verified, you will be awarded <span className="font-bold" style={{ color: '#F97316' }}>+{POINTS.sos_report} points</span>.
+          <h1 className="text-2xl font-bold mb-2" style={{ color: '#2C2347' }}>Report Received!</h1>
+          <p className="text-sm mb-4" style={{ color: '#6E6788' }}>
+            Your report is now pending review. Once verified, you will be awarded <span className="font-bold" style={{ color: '#7C5CC4' }}>+{POINTS.sos_report} points</span>.
           </p>
-          <p className="text-sm mb-6" style={{ color: '#6B7280' }}>
+          <p className="text-sm mb-6" style={{ color: '#6E6788' }}>
             We captured the location information from your device and the screenshot has been included with your report.
           </p>
           <div className="flex flex-col gap-3">
             <Link
               href="/rewards"
               className="block w-full py-3 rounded-full text-white font-semibold"
-              style={{ backgroundColor: '#F97316' }}
+              style={{ backgroundColor: '#7C5CC4' }}
             >
               🏆 View My Points
             </Link>
             <button
               onClick={() => setSubmitted(false)}
               className="w-full py-3 rounded-full font-semibold border-2"
-              style={{ borderColor: '#EF4444', color: '#EF4444' }}
+              style={{ borderColor: '#E5394E', color: '#E5394E' }}
             >
               🆘 Report Another
             </button>
-            <Link href="/" className="text-sm" style={{ color: '#6B7280' }}>
+            <Link href="/" className="text-sm" style={{ color: '#6E6788' }}>
               Back to Home
             </Link>
           </div>
@@ -112,31 +112,31 @@ export default function SOSPage() {
   }
 
   return (
-    <main className="min-h-screen p-6 flex items-center justify-center" style={{ backgroundColor: '#FFF9F2' }}>
+    <main className="min-h-screen p-6 flex items-center justify-center" style={{ backgroundColor: '#F7F4FD' }}>
       <div className="bg-white rounded-2xl p-8 shadow-sm max-w-sm w-full">
         <div className="text-center mb-6">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-3"
-            style={{ backgroundColor: '#FEF2F2' }}
+            style={{ backgroundColor: '#FCEDEF' }}
           >
             🆘
           </div>
-          <h1 className="text-2xl font-bold" style={{ color: '#1F2937' }}>Bring MadMix Here</h1>
-          <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
+          <h1 className="text-2xl font-bold" style={{ color: '#2C2347' }}>Bring MadMix Here</h1>
+          <p className="text-sm mt-1" style={{ color: '#6E6788' }}>
             Can't find MadMix? Report it and earn{' '}
-            <span className="font-bold" style={{ color: '#F97316' }}>+{POINTS.sos_report} points</span>.
+            <span className="font-bold" style={{ color: '#7C5CC4' }}>+{POINTS.sos_report} points</span>.
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl text-sm" style={{ backgroundColor: '#FEF2F2', color: '#EF4444' }}>
+          <div className="mb-4 p-3 rounded-xl text-sm" style={{ backgroundColor: '#FCEDEF', color: '#E5394E' }}>
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: '#1F2937' }}>Your PIN Code *</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: '#2C2347' }}>Your PIN Code *</label>
             <input
               type="text"
               inputMode="numeric"
@@ -146,25 +146,25 @@ export default function SOSPage() {
               onChange={e => setForm(f => ({ ...f, pin_code: e.target.value }))}
               placeholder="Enter your 6-digit PIN"
               className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2"
-              style={{ borderColor: '#E5E7EB', color: '#1F2937' }}
+              style={{ borderColor: '#E5E7EB', color: '#2C2347' }}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: '#1F2937' }}>Product you couldn't find *</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: '#2C2347' }}>Product you couldn't find *</label>
             <select
               required
               value={form.product_name}
               onChange={e => setForm(f => ({ ...f, product_name: e.target.value }))}
               className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 bg-white"
-              style={{ borderColor: '#E5E7EB', color: '#1F2937' }}
+              style={{ borderColor: '#E5E7EB', color: '#2C2347' }}
             >
               {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: '#1F2937' }}>Where did you check? *</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: '#2C2347' }}>Where did you check? *</label>
             <div className="grid grid-cols-2 gap-2">
               {PLATFORMS.map(pl => (
                 <button
@@ -173,9 +173,9 @@ export default function SOSPage() {
                   onClick={() => setForm(f => ({ ...f, platform: pl.value }))}
                   className="py-2 px-3 rounded-xl border text-sm font-medium transition-all"
                   style={{
-                    borderColor: form.platform === pl.value ? '#EF4444' : '#E5E7EB',
-                    backgroundColor: form.platform === pl.value ? '#FEF2F2' : 'white',
-                    color: form.platform === pl.value ? '#EF4444' : '#6B7280',
+                    borderColor: form.platform === pl.value ? '#E5394E' : '#E5E7EB',
+                    backgroundColor: form.platform === pl.value ? '#FCEDEF' : 'white',
+                    color: form.platform === pl.value ? '#E5394E' : '#6E6788',
                   }}
                 >
                   {pl.label}
@@ -184,14 +184,14 @@ export default function SOSPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl bg-[#FEF7E6] border border-[#FDE68A] p-4 text-sm" style={{ color: '#6B7280' }}>
-            <p className="font-medium" style={{ color: '#1F2937' }}>Current location</p>
+          <div className="rounded-2xl bg-[#FBF3DA] border border-[#FDE68A] p-4 text-sm" style={{ color: '#6E6788' }}>
+            <p className="font-medium" style={{ color: '#2C2347' }}>Current location</p>
             <p className="mt-1">{location ? `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}` : locationStatus}</p>
             <p className="text-xs mt-2">We use your current location to validate where the SOS request was submitted from.</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: '#1F2937' }}>Screenshot of missing item *</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: '#2C2347' }}>Screenshot of missing item *</label>
             <input
               type="file"
               accept="image/*"
@@ -200,15 +200,15 @@ export default function SOSPage() {
               className="w-full text-sm outline-none"
             />
             {screenshotFile && (
-              <p className="text-xs mt-2" style={{ color: '#1F2937' }}>
+              <p className="text-xs mt-2" style={{ color: '#2C2347' }}>
                 Attached: {screenshotFile.name}
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: '#1F2937' }}>
-              Phone Number <span style={{ color: '#6B7280' }}>(optional — to receive points after review)</span>
+            <label className="block text-sm font-medium mb-1" style={{ color: '#2C2347' }}>
+              Phone Number <span style={{ color: '#6E6788' }}>(optional — to receive points after review)</span>
             </label>
             <input
               type="tel"
@@ -216,7 +216,7 @@ export default function SOSPage() {
               onChange={e => setForm(f => ({ ...f, customer_phone: e.target.value }))}
               placeholder="+91 98765 43210"
               className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2"
-              style={{ borderColor: '#E5E7EB', color: '#1F2937' }}
+              style={{ borderColor: '#E5E7EB', color: '#2C2347' }}
             />
           </div>
 
@@ -224,18 +224,18 @@ export default function SOSPage() {
             type="submit"
             disabled={loading}
             className="w-full py-4 rounded-full text-white font-bold text-lg mt-2 transition-transform hover:scale-105 active:scale-95 disabled:opacity-60"
-            style={{ backgroundColor: '#EF4444' }}
+            style={{ backgroundColor: '#E5394E' }}
           >
             {loading ? 'Reporting...' : '🆘 Report Stockout'}
           </button>
         </form>
 
-        <p className="text-xs text-center mt-4" style={{ color: '#6B7280' }}>
+        <p className="text-xs text-center mt-4" style={{ color: '#6E6788' }}>
           Your report helps MadMix prioritise distribution to your area.
         </p>
 
         <div className="mt-4 text-center">
-          <Link href="/" className="text-sm" style={{ color: '#6B7280' }}>
+          <Link href="/" className="text-sm" style={{ color: '#6E6788' }}>
             ← Back to Home
           </Link>
         </div>

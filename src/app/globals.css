@@ -1,23 +1,33 @@
 @import "tailwindcss";
 
+/* MadMix brand palette — purple wordmark, warm-orange backdrop, playful pack accents */
 :root {
-  --brand-orange: #F97316;
-  --brand-yellow: #FBBF24;
-  --brand-green: #22C55E;
-  --brand-red: #EF4444;
-  --bg-cream: #FFF9F2;
-  --text-charcoal: #1F2937;
-  --text-slate: #6B7280;
+  --brand-purple: #7C5CC4;  /* primary — the madmix logo lavender */
+  --brand-orange: #EE7B30;  /* secondary — the signature product backdrop */
+  --brand-yellow: #F5B301;  /* golden millet puffs */
+  --brand-green: #7CBE3F;   /* green pop */
+  --brand-blue: #34B5E5;    /* sky-blue puffs */
+  --brand-pink: #EA4C89;    /* magenta raisins */
+  --brand-red: #E5394E;     /* SOS / high demand */
+  --bg-cream: #F7F4FD;      /* soft lavender-white */
+  --text-charcoal: #2C2347; /* deep purple-charcoal */
+  --text-slate: #6E6788;    /* muted purple-slate */
 }
 
 @theme inline {
-  --color-orange: #F97316;
-  --color-yellow: #FBBF24;
-  --color-green: #22C55E;
-  --color-red: #EF4444;
-  --color-cream: #FFF9F2;
-  --color-charcoal: #1F2937;
-  --color-slate: #6B7280;
+  /* keep the legacy `orange` token mapped to the primary so existing
+     utility classes (text-orange-500, etc.) follow the new brand purple */
+  --color-orange: #7C5CC4;
+  --color-purple: #7C5CC4;
+  --color-amber: #EE7B30;
+  --color-yellow: #F5B301;
+  --color-green: #7CBE3F;
+  --color-blue: #34B5E5;
+  --color-pink: #EA4C89;
+  --color-red: #E5394E;
+  --color-cream: #F7F4FD;
+  --color-charcoal: #2C2347;
+  --color-slate: #6E6788;
 }
 
 body {
@@ -39,8 +49,8 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%,100% { box-shadow: 0 0 0 0   rgba(249,115,22,0.5); }
-  50%      { box-shadow: 0 0 0 14px rgba(249,115,22,0); }
+  0%,100% { box-shadow: 0 0 0 0   rgba(124,92,196,0.5); }
+  50%      { box-shadow: 0 0 0 14px rgba(124,92,196,0); }
 }
 
 @keyframes slide-up {

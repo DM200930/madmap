@@ -29,7 +29,7 @@ function getPinLocation(pin: string): [number, number] {
 }
 
 function getHeatColor(count: number) {
-  return count >= 5 ? '#EF4444' : count >= 2 ? '#FBBF24' : '#22C55E'
+  return count >= 5 ? '#E5394E' : count >= 2 ? '#F5B301' : '#7CBE3F'
 }
 
 export default function DashboardHeatmap({ heatmap }: { heatmap: HeatmapPin[] }) {
@@ -37,8 +37,8 @@ export default function DashboardHeatmap({ heatmap }: { heatmap: HeatmapPin[] })
     <div className="bg-white rounded-2xl p-6 shadow-sm">
       <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="font-bold" style={{ color: '#1F2937' }}>Demand Heatmap by PIN Code</h2>
-          <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
+          <h2 className="font-bold" style={{ color: '#2C2347' }}>Demand Heatmap by PIN Code</h2>
+          <p className="text-sm mt-1" style={{ color: '#6E6788' }}>
             Real customer reports shown on a map. Hotter circles mean more requests from that postal cluster.
           </p>
         </div>
@@ -80,7 +80,7 @@ export default function DashboardHeatmap({ heatmap }: { heatmap: HeatmapPin[] })
       </div>
 
       {heatmap.length === 0 ? (
-        <div className="text-center py-12" style={{ color: '#6B7280' }}>
+        <div className="text-center py-12" style={{ color: '#6E6788' }}>
           <p className="text-4xl mb-3">📍</p>
           <p>No SOS reports yet. Reports will appear here as customers submit them.</p>
         </div>
@@ -91,20 +91,20 @@ export default function DashboardHeatmap({ heatmap }: { heatmap: HeatmapPin[] })
               key={pin.pin_code}
               className="flex items-center gap-4 p-4 rounded-xl transition-all hover:shadow-md"
               style={{
-                backgroundColor: pin.report_count >= 5 ? '#FEF2F2' : pin.report_count >= 2 ? '#FFFBEB' : '#F0FDF4',
+                backgroundColor: pin.report_count >= 5 ? '#FCEDEF' : pin.report_count >= 2 ? '#FFFBEB' : '#F2F8E9',
               }}
             >
               <div
                 className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white flex-shrink-0"
                 style={{
-                  backgroundColor: pin.report_count >= 5 ? '#EF4444' : pin.report_count >= 2 ? '#FBBF24' : '#22C55E',
+                  backgroundColor: pin.report_count >= 5 ? '#E5394E' : pin.report_count >= 2 ? '#F5B301' : '#7CBE3F',
                 }}
               >
                 {pin.report_count}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-mono font-bold" style={{ color: '#1F2937' }}>{pin.pin_code}</p>
-                <p className="text-xs truncate" style={{ color: '#6B7280' }}>{pin.products.join(' · ')}</p>
+                <p className="font-mono font-bold" style={{ color: '#2C2347' }}>{pin.pin_code}</p>
+                <p className="text-xs truncate" style={{ color: '#6E6788' }}>{pin.products.join(' · ')}</p>
               </div>
               <div className="text-right flex-shrink-0">
                 <p className="text-xs mt-1" style={{ color: '#9CA3AF' }}>
