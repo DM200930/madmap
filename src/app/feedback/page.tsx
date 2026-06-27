@@ -15,7 +15,8 @@ export default function FeedbackPage() {
 
   const [category, setCategory] = useState('')
   const [flavour, setFlavour] = useState('')
-  const [message, setMessage] = useState('')
+  const [rating, setRating] = useState(0)
+  const [hover, setHover] = useState(0)
   const [phone, setPhone] = useState('')
   const [location, setLocation] = useState<LocationState>(emptyLocation)
 
@@ -24,7 +25,7 @@ export default function FeedbackPage() {
     setError('')
 
     if (!category || !flavour) { setError('Please choose a product and flavour.'); return }
-    if (!message.trim()) { setError('Please share your feedback.'); return }
+    if (!rating) { setError('Please rate your experience.'); return }
     if (!hasLocation(location)) { setError('Please share your location or enter a PIN code.'); return }
 
     setLoading(true)
@@ -34,7 +35,7 @@ export default function FeedbackPage() {
       const payload = {
         product: category,
         flavour,
-        message: message.trim(),
+        rating,
         pin_code: location.share ? (loc?.pin_code || null) : (location.manualPin.trim() || null),
         city: loc?.city || null,
         state: loc?.state || null,
@@ -91,16 +92,24 @@ export default function FeedbackPage() {
 
               <LocationPicker accent="#2F855A" onChange={setLocation} />
 
-              {/* Feedback */}
+              {/* 5-star rating */}
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: '#2C2347' }}>Your Feedback *</label>
-                <textarea
-                  required rows={4} value={message}
-                  onChange={e => setMessage(e.target.value)}
-                  placeholder="Tell us what you loved, what we can improve, or what products you'd like to see."
-                  className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 resize-none"
-                  style={{ borderColor: '#E5E7EB', color: '#2C2347' }}
-                />
+                <label className="block text-sm font-medium mb-2" style={{ color: '#2C2347' }}>Rate your experience *</label>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button
+                      type="button" key={n}
+                      onClick={() => setRating(n)}
+                      onMouseEnter={() => setHover(n)}
+                      onMouseLeave={() => setHover(0)}
+                      className="text-4xl transition-transform hover:scale-125 active:scale-110"
+                      aria-label={`${n} star${n > 1 ? 's' : ''}`}
+                    >
+                      {n <= (hover || rating) ? '⭐' : '☆'}
+                    </button>
+                  ))}
+                  {rating > 0 && <span className="ml-2 text-sm font-semibold" style={{ color: '#2F855A' }}>{rating}/5</span>}
+                </div>
               </div>
 
               {/* Phone (optional) */}
