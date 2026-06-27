@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import TopNav from '@/components/TopNav'
 import PacketBackdrop from '@/components/PacketBackdrop'
+import Reveal from '@/components/Reveal'
 
 export default function Home() {
   return (
@@ -29,28 +30,45 @@ export default function Home() {
           </p>
         </section>
 
-        {/* SOS — the bold, headline feature */}
-        <section className="px-6 pb-16 w-full">
-          <div className="max-w-2xl mx-auto">
+        {/* Two headline buttons side by side */}
+        <Reveal as="section" className="px-6 pb-16 w-full">
+          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Left — feedback (dark calming green) */}
+            <Link
+              href="/feedback"
+              className="group block rounded-3xl p-8 text-center text-white animate-pulse-glow transition-transform hover:scale-[1.02] active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #2F855A, #1E5C3F)' }}
+            >
+              <div className="text-6xl mb-3">💬</div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold mb-2">We&apos;re a startup —<br />we&apos;d love to hear what you think!</h2>
+              <p className="text-base opacity-95 max-w-md mx-auto">
+                Tell us what you loved, what to improve, and what products you want next.
+              </p>
+              <span className="inline-block mt-5 px-7 py-3 rounded-full font-bold text-lg bg-white" style={{ color: '#2F855A' }}>
+                Share Feedback →
+              </span>
+            </Link>
+
+            {/* Right — SOS (bold red) */}
             <Link
               href="/sos"
-              className="group block rounded-3xl p-8 sm:p-10 text-center text-white animate-pulse-glow-red transition-transform hover:scale-[1.02] active:scale-95"
+              className="group block rounded-3xl p-8 text-center text-white animate-pulse-glow-red transition-transform hover:scale-[1.02] active:scale-95"
               style={{ background: 'linear-gradient(135deg, #E5394E, #C81E36)' }}
             >
               <div className="text-6xl mb-3">🆘</div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold mb-2">Bring MadMix Here</h2>
-              <p className="text-base sm:text-lg opacity-95 max-w-md mx-auto">
-                Can&apos;t find MadMix near you? Tap to report it. Every report puts your area on our map — and earns you points.
+              <h2 className="text-2xl sm:text-3xl font-extrabold mb-2">Bring MadMix Here</h2>
+              <p className="text-base opacity-95 max-w-md mx-auto">
+                Can&apos;t find MadMix near you? Report it. Every report puts your area on our map — and earns you points.
               </p>
               <span className="inline-block mt-5 px-7 py-3 rounded-full font-bold text-lg bg-white" style={{ color: '#E5394E' }}>
                 Report a Stockout →
               </span>
             </Link>
           </div>
-        </section>
+        </Reveal>
 
         {/* Value table */}
-        <section className="px-6 pb-16 max-w-3xl mx-auto w-full">
+        <Reveal as="section" delay={80} className="px-6 pb-16 max-w-3xl mx-auto w-full">
           <h2 className="text-2xl font-bold text-center mb-8" style={{ color: '#2C2347' }}>
             Every Action Creates Value
           </h2>
@@ -97,8 +115,17 @@ export default function Home() {
               📊 Dashboard
             </Link>
           </div>
-        </section>
+        </Reveal>
       </main>
+
+      {/* Floating feedback button */}
+      <Link
+        href="/feedback"
+        className="fixed bottom-5 right-5 z-40 max-w-[260px] rounded-2xl px-5 py-3 text-white font-semibold text-sm shadow-xl transition-transform hover:scale-105 active:scale-95"
+        style={{ backgroundColor: '#7C5CC4', boxShadow: '0 12px 28px -8px rgba(124,92,196,0.8)' }}
+      >
+        We&apos;re a startup. Tell us what you&apos;d love to see next →
+      </Link>
     </>
   )
 }

@@ -1,58 +1,38 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import TopNav from '@/components/TopNav'
 import ProductSelect from '@/components/ProductSelect'
+import RewardSuccess from '@/components/RewardSuccess'
+import { POINTS } from '@/lib/types'
+import { captureLocation, type ResolvedLocation } from '@/lib/location'
+import { uploadScreenshot } from '@/lib/upload'
 
 export default function SOSPage() {
-  const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const [category, setCategory] = useState('')
   const [flavour, setFlavour] = useState('')
-  const [form, setForm] = useState({ pin_code: '', customer_phone: '' })
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [locationStatus, setLocationStatus] = useState('Detecting your location to find your PIN code…')
-  const [autoPin, setAutoPin] = useState(false)
+  const [phone, setPhone] = useState('')
+  const [file, setFile] = useState<File | null>(null)
 
+  const [loc, setLoc] = useState<ResolvedLocation | null>(null)
+  const [locState, setLocState] = useState<'idle' | 'detecting' | 'ready' | 'denied'>('detecting')
+
+  const [done, setDone] = useState(false)
+  const [earned, setEarned] = useState(0)
+  const [currentPoints, setCurrentPoints] = useState(0)
+
+  // Silently request location + reverse geocode on open (no manual PIN, no card)
   useEffect(() => {
-    if (!navigator?.geolocation) {
-      setLocationStatus('Location is not available — please enter your PIN code manually.')
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async position => {
-        const lat = position.coords.latitude
-        const lng = position.coords.longitude
-        setLocation({ lat, lng })
-
-        // Reverse-geocode coordinates → PIN code
-        try {
-          const res = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
-          )
-          const data = await res.json()
-          const pin = (data.postcode || '').replace(/\D/g, '').slice(0, 6)
-          if (pin) {
-            setForm(f => ({ ...f, pin_code: pin }))
-            setAutoPin(true)
-            setLocationStatus(`Detected PIN ${pin} from your location.`)
-          } else {
-            setLocationStatus('Location captured — please confirm your PIN code below.')
-          }
-        } catch {
-          setLocationStatus('Location captured — please confirm your PIN code below.')
-        }
-      },
-      () => {
-        setLocationStatus('Allow location access to auto-fill your PIN, or enter it manually.')
-      },
-      { enableHighAccuracy: true, timeout: 15000 }
-    )
+    let cancelled = false
+    setLocState('detecting')
+    captureLocation()
+      .then(r => { if (!cancelled) { setLoc(r); setLocState('ready') } })
+      .catch(() => { if (!cancelled) setLocState('denied') })
+    return () => { cancelled = true }
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -66,55 +46,67 @@ export default function SOSPage() {
     setLoading(true)
 
     try {
-      const { error: err } = await supabase.from('sos_reports').insert({
-        pin_code: form.pin_code,
-        product_name: `${category} — ${flavour}`,
-        points_earned: 0,
-        report_status: 'pending',
-        customer_phone: form.customer_phone || null,
-        location_lat: location?.lat ?? null,
-        location_lng: location?.lng ?? null,
-      })
+      // Optional evidence upload (never blocks submission)
+      let screenshot_url: string | null = null
+      if (file) screenshot_url = await uploadScreenshot(file)
 
-      if (err) throw err
-      if (form.customer_phone) { try { localStorage.setItem('madmap_phone', form.customer_phone) } catch {} }
-      setSubmitted(true)
-    } catch {
+      const points = POINTS.sos_report
+      const payload = {
+        product: category,
+        flavour,
+        product_name: `${category} — ${flavour}`,
+        pin_code: loc?.pin_code || null,
+        city: loc?.city || null,
+        state: loc?.state || null,
+        location_lat: loc?.lat ?? null,
+        location_lng: loc?.lng ?? null,
+        screenshot_url,
+        points_earned: points,
+        report_status: 'pending',
+        customer_phone: phone || null,
+      }
+
+      const { error: insertErr } = await supabase.from('sos_reports').insert(payload)
+      if (insertErr) {
+        console.error('[SOS] insert failed:', insertErr.message, insertErr.details, payload)
+        setError(`Could not submit report: ${insertErr.message}`)
+        setLoading(false)
+        return
+      }
+
+      // Reward points if we know who to credit
+      let total = points
+      if (phone) {
+        try { localStorage.setItem('madmap_phone', phone) } catch {}
+        const { error: rpcErr } = await supabase.rpc('add_customer_points', {
+          p_phone: phone, p_points: points, p_scan: false,
+        })
+        if (rpcErr) console.error('[SOS] points RPC failed:', rpcErr.message)
+        const { data: cust } = await supabase.from('customers').select('total_points').eq('phone', phone).single()
+        if (cust?.total_points) total = cust.total_points
+      }
+
+      setEarned(points)
+      setCurrentPoints(total)
+      setDone(true)
+    } catch (err) {
+      console.error('[SOS] unexpected error:', err)
       setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  if (submitted) {
+  if (done) {
     return (
       <>
         <TopNav />
-        <main className="flex-1 flex items-center justify-center p-6 animate-page">
-          <div className="bg-white rounded-3xl p-8 shadow-sm max-w-sm w-full text-center animate-slide-up">
-            <div className="text-6xl mb-4 animate-celebrate">📍</div>
-            <h1 className="text-2xl font-bold mb-2" style={{ color: '#2C2347' }}>Report Received!</h1>
-            <p className="text-sm mb-4" style={{ color: '#6E6788' }}>
-              Your area is now on our demand map. Once verified you&apos;ll be rewarded with points.
-            </p>
-            <p className="text-sm mb-6" style={{ color: '#6E6788' }}>
-              Thank you for helping us bring MadMix closer to you.
-            </p>
-            <div className="flex flex-col gap-3">
-              <Link href="/rewards" className="block w-full py-3 rounded-full text-white font-semibold" style={{ backgroundColor: '#7C5CC4' }}>
-                🏆 View My Points
-              </Link>
-              <button
-                onClick={() => { setSubmitted(false); setCategory(''); setFlavour('') }}
-                className="w-full py-3 rounded-full font-semibold border-2"
-                style={{ borderColor: '#E5394E', color: '#E5394E' }}
-              >
-                🆘 Report Another
-              </button>
-              <Link href="/" className="text-sm" style={{ color: '#6E6788' }}>Back to Home</Link>
-            </div>
-          </div>
-        </main>
+        <RewardSuccess
+          earned={earned}
+          currentPoints={currentPoints}
+          headline="🎉 Thanks for helping MadMix!"
+          subtext={`Your area is on our demand map. You earned +${earned} points for the report.`}
+        />
       </>
     )
   }
@@ -140,34 +132,30 @@ export default function SOSPage() {
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <ProductSelect category={category} flavour={flavour} onCategory={setCategory} onFlavour={setFlavour} accent="#E5394E" />
 
-              {/* Location → PIN */}
-              <div className="rounded-2xl p-4 text-sm" style={{ backgroundColor: '#EFE9FB', color: '#6E6788' }}>
-                <p className="font-medium flex items-center gap-1" style={{ color: '#2C2347' }}>📍 Your location</p>
-                <p className="mt-1">{locationStatus}</p>
-              </div>
-
+              {/* Evidence upload */}
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: '#2C2347' }}>
-                  PIN Code * {autoPin && <span style={{ color: '#7CBE3F' }}>· auto-filled</span>}
-                </label>
+                <label className="block text-sm font-medium mb-1" style={{ color: '#2C2347' }}>Upload Screenshot</label>
+                <p className="text-xs mb-2" style={{ color: '#6E6788' }}>
+                  Upload a photo showing that the product is unavailable (optional but recommended).
+                </p>
                 <input
-                  type="text" inputMode="numeric" maxLength={6} required
-                  value={form.pin_code}
-                  onChange={e => { setForm(f => ({ ...f, pin_code: e.target.value })); setAutoPin(false) }}
-                  placeholder="6-digit PIN"
-                  className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2"
-                  style={{ borderColor: '#E5E7EB', color: '#2C2347' }}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  onChange={e => setFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:text-white file:bg-[#E5394E]"
+                  style={{ color: '#6E6788' }}
                 />
+                {file && <p className="text-xs mt-2" style={{ color: '#7CBE3F' }}>📎 {file.name}</p>}
               </div>
 
+              {/* Phone (optional, never blocks) */}
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: '#2C2347' }}>
                   Phone Number <span style={{ color: '#6E6788' }}>(optional — to receive points)</span>
                 </label>
                 <input
-                  type="tel"
-                  value={form.customer_phone}
-                  onChange={e => setForm(f => ({ ...f, customer_phone: e.target.value }))}
+                  type="tel" value={phone}
+                  onChange={e => setPhone(e.target.value)}
                   placeholder="+91 98765 43210"
                   className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2"
                   style={{ borderColor: '#E5E7EB', color: '#2C2347' }}
@@ -181,14 +169,18 @@ export default function SOSPage() {
               >
                 {loading ? 'Reporting…' : '🆘 Report Stockout'}
               </button>
-            </form>
 
-            <p className="text-xs text-center mt-4" style={{ color: '#6E6788' }}>
-              Your report helps MadMix prioritise distribution to your area.
-            </p>
+              <p className="text-xs text-center" style={{ color: '#6E6788' }}>
+                {locState === 'detecting' && '📍 Detecting your location…'}
+                {locState === 'ready' && `📍 Location captured${loc?.city ? ` · ${loc.city}` : ''}${loc?.pin_code ? ` · ${loc.pin_code}` : ''}`}
+                {locState === 'denied' && '📍 Location off — your report still helps, but enabling it pinpoints demand.'}
+              </p>
+            </form>
           </div>
         </div>
       </main>
     </>
   )
 }
+
+// custom file button colour

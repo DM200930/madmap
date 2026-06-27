@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import TopNav from '@/components/TopNav'
-import { POINTS, PROGRESS_GOAL, type Customer } from '@/lib/types'
+import { POINTS, PROGRESS_GOAL, EARN_TABLE, type Customer } from '@/lib/types'
+import Reveal from '@/components/Reveal'
 
 export default function RewardsPage() {
   const [phone, setPhone] = useState('')
@@ -215,21 +216,15 @@ export default function RewardsPage() {
           })()}
 
           {/* How to earn */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm mt-4">
+          <Reveal as="div" className="bg-white rounded-2xl p-6 shadow-sm mt-4">
             <h2 className="font-bold mb-4" style={{ color: '#2C2347' }}>How to Earn Points</h2>
-            {[
-              { action: 'First QR scan', pts: `+${POINTS.first_scan}`, icon: '🎉' },
-              { action: 'Each QR scan', pts: `+${POINTS.regular_scan}`, icon: '📦' },
-              { action: 'Every 5 scans (streak bonus)', pts: `+${POINTS.scan_streak_5}`, icon: '🔥' },
-              { action: 'Member for over a month', pts: `+${POINTS.member_month}`, icon: '📅' },
-              { action: 'Refer the app to a friend', pts: `+${POINTS.referral}`, icon: '👥' },
-            ].map(item => (
+            {EARN_TABLE.map(item => (
               <div key={item.action} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: '#F3F4F6' }}>
                 <span className="text-sm flex items-center gap-2" style={{ color: '#6E6788' }}>{item.icon} {item.action}</span>
                 <span className="font-bold text-sm" style={{ color: '#7C5CC4' }}>{item.pts}</span>
               </div>
             ))}
-          </div>
+          </Reveal>
 
           <div className="mt-6 flex justify-center">
             <Link href="/" className="text-sm" style={{ color: '#6E6788' }}>← Home</Link>
