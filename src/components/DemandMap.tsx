@@ -49,7 +49,12 @@ export default function DemandMap({
         />
         <HeatLayer points={points} />
         {showCircles && points.map(p => {
-          const color = p.status === 'unmet' ? '#E5394E' : '#7CBE3F'
+          const color = p.status === 'unmet' ? '#E5394E' : p.status === 'feedback' ? '#22C55E' : '#7CBE3F'
+          const label = p.status === 'unmet'
+            ? '🔴 Demand, no supply'
+            : p.status === 'feedback'
+            ? '🟢 Feedback — confirmed engagement'
+            : '🟢 Demand & supply'
           // proportional, pixel-based radius → stays visible at every zoom level
           const radius = Math.max(10, Math.min(42, 8 + p.count * 4))
           return (
@@ -61,12 +66,12 @@ export default function DemandMap({
             >
               <Popup>
                 <div className="text-xs leading-relaxed">
-                  <strong>{p.status === 'unmet' ? '🔴 Demand, no supply' : '🟢 Demand & supply'}</strong><br />
+                  <strong>{label}</strong><br />
                   <b>Product:</b> {p.products.join(', ') || '—'}<br />
                   <b>Flavour:</b> {p.flavours.join(', ') || '—'}<br />
                   <b>PIN:</b> {p.pin_code || '—'}<br />
                   <b>City:</b> {p.city || '—'}<br />
-                  <b>Reports:</b> {p.count}<br />
+                  <b>{p.status === 'feedback' ? 'Feedbacks' : 'Reports'}:</b> {p.count}<br />
                   <b>Latest:</b> {p.latest ? new Date(p.latest).toLocaleString('en-IN') : '—'}<br />
                   <b>Coords:</b> {p.lat.toFixed(4)}, {p.lng.toFixed(4)}
                 </div>

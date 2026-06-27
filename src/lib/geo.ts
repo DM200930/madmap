@@ -5,7 +5,7 @@ export interface DemandPoint {
   lat: number
   lng: number
   count: number
-  status: 'supplied' | 'unmet' // green = demand & supply, red = demand only
+  status: 'supplied' | 'unmet' | 'feedback' // green = supply, red = unmet demand, bright green = feedback engagement
   products: string[]
   flavours: string[]
   city: string

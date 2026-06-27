@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import TopNav from '@/components/TopNav'
@@ -20,7 +20,7 @@ const ADMIN_PASSCODE = 'madmix'
 
 interface ScanRow { pin_code: string | null; product_name: string | null; created_at: string }
 interface SosRow extends SosLite { id: string; location_lat: number | null; location_lng: number | null }
-interface FeedbackRow extends FeedbackLite { id: string }
+interface FeedbackRow extends FeedbackLite { id: string; pin_code: string | null; location_lat: number | null; location_lng: number | null }
 
 const ASSOCIATIONS: { category: string; icon: string; pairs: string[]; brands: string[] }[] = [
   { category: 'Bhujia', icon: '🌶️',
@@ -55,24 +55,32 @@ export default function AdminPage() {
     try { if (sessionStorage.getItem('madmap_admin') === '1') setAuthed(true) } catch {}
   }, [])
 
+  const load = useCallback(async () => {
+    const [s, r, f] = await Promise.all([
+      supabase.from('scans').select('pin_code, product_name, created_at'),
+      supabase.from('sos_reports').select('*'),
+      supabase.from('feedback').select('*'),
+    ])
+    if (s.error) console.error('[Admin] scans load failed:', s.error.message)
+    if (r.error) console.error('[Admin] sos load failed:', r.error.message)
+    if (f.error) console.error('[Admin] feedback load failed:', f.error.message)
+    setScans((s.data as ScanRow[]) || [])
+    setSos((r.data as SosRow[]) || [])
+    setFeedback((f.data as FeedbackRow[]) || [])
+    setLoading(false)
+  }, [])
+
   useEffect(() => {
     if (!authed) return
-    async function load() {
-      const [s, r, f] = await Promise.all([
-        supabase.from('scans').select('pin_code, product_name, created_at'),
-        supabase.from('sos_reports').select('*'),
-        supabase.from('feedback').select('*'),
-      ])
-      if (s.error) console.error('[Admin] scans load failed:', s.error.message)
-      if (r.error) console.error('[Admin] sos load failed:', r.error.message)
-      if (f.error) console.error('[Admin] feedback load failed:', f.error.message)
-      setScans((s.data as ScanRow[]) || [])
-      setSos((r.data as SosRow[]) || [])
-      setFeedback((f.data as FeedbackRow[]) || [])
-      setLoading(false)
-    }
     load()
-  }, [authed])
+    // Live updates: re-pull whenever a new SOS report or feedback lands.
+    const channel = supabase
+      .channel('admin-dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sos_reports' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feedback' }, () => load())
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [authed, load])
 
   // green = demand & supply (scans), red = demand only (SOS without a scan in that PIN)
   const points: DemandPoint[] = useMemo(() => {
@@ -97,11 +105,22 @@ export default function AdminPage() {
       if (product !== '—' && !p.products.includes(product)) p.products.push(product)
       if (flavour !== '—' && !p.flavours.includes(flavour)) p.flavours.push(flavour)
     })
-    return [...supplied.values(), ...unmet.values()]
-  }, [scans, sos])
+    // feedback = confirmed customer engagement / market presence (green)
+    const engaged = new Map<string, DemandPoint>()
+    feedback.forEach(r => {
+      const k = r.pin_code || (r.location_lat ? `${r.location_lat},${r.location_lng}` : 'unknown')
+      const [lat, lng] = r.location_lat && r.location_lng ? [r.location_lat, r.location_lng] : pinToCoord(r.pin_code || '')
+      if (!engaged.has(k)) engaged.set(k, { pin_code: r.pin_code || '—', lat, lng, count: 0, status: 'feedback', products: [], flavours: [], city: r.city || '', latest: r.created_at })
+      const p = engaged.get(k)!; p.count++
+      if (r.product && !p.products.includes(r.product)) p.products.push(r.product)
+      if (r.flavour && !p.flavours.includes(r.flavour)) p.flavours.push(r.flavour)
+    })
+    return [...supplied.values(), ...unmet.values(), ...engaged.values()]
+  }, [scans, sos, feedback])
 
   const greenCount = points.filter(p => p.status === 'supplied').length
   const redCount = points.filter(p => p.status === 'unmet').length
+  const feedbackCount = points.filter(p => p.status === 'feedback').length
 
   const hidden = useMemo(() => computeHiddenRevenue(sos), [sos])
   const restock = useMemo(() => computeRestock(sos), [sos])
@@ -187,9 +206,10 @@ export default function AdminPage() {
                   <h2 className="text-xl font-bold" style={{ color: '#2C2347' }}>Demand vs Supply — Pan India</h2>
                   <p className="text-sm" style={{ color: '#6E6788' }}>Density heatmap glows green→red by report intensity; circles mark each cluster.</p>
                 </div>
-                <div className="flex gap-4 text-sm font-medium">
-                  <span style={{ color: '#7CBE3F' }}>🟢 Demand &amp; supply ({greenCount})</span>
-                  <span style={{ color: '#E5394E' }}>🔴 Demand, no supply ({redCount})</span>
+                <div className="flex flex-wrap gap-4 text-sm font-medium">
+                  <span style={{ color: '#E5394E' }}>🔴 SOS — unmet demand ({redCount})</span>
+                  <span style={{ color: '#22C55E' }}>🟢 Feedback — engagement ({feedbackCount})</span>
+                  <span style={{ color: '#7CBE3F' }}>🟢 Scans — supply ({greenCount})</span>
                 </div>
               </div>
               {loading ? <div className="text-center py-20" style={{ color: '#6E6788' }}>Loading map…</div> : <DemandMap points={points} height="70vh" />}
@@ -222,17 +242,17 @@ export default function AdminPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr style={{ backgroundColor: '#7C5CC4' }}>
-                        {['PIN Code', 'Product', 'Flavour', 'Est. Revenue Lost'].map(h => (
+                        {['Rank', 'PIN Code', 'Flavour', 'Est. Revenue Lost'].map(h => (
                           <th key={h} className={`px-4 py-2 text-white font-semibold ${h === 'Est. Revenue Lost' ? 'text-right' : 'text-left'}`}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {hidden.opportunities.slice(0, 10).map((o, i) => (
+                      {hidden.opportunities.slice(0, 5).map((o, i) => (
                         <tr key={`${o.pin_code}-${o.product}-${o.flavour}`} style={{ backgroundColor: i % 2 ? 'white' : '#F8F5FE' }}>
+                          <td className="px-4 py-2 font-bold" style={{ color: '#7C5CC4' }}>{i + 1}</td>
                           <td className="px-4 py-2 font-mono" style={{ color: '#2C2347' }}>{o.pin_code}</td>
-                          <td className="px-4 py-2" style={{ color: '#2C2347' }}>{o.product}</td>
-                          <td className="px-4 py-2" style={{ color: '#6E6788' }}>{o.flavour}</td>
+                          <td className="px-4 py-2" style={{ color: '#2C2347' }}>{o.flavour}</td>
                           <td className="px-4 py-2 text-right font-bold" style={{ color: '#E5394E' }}>{inr(o.revenueLost)}</td>
                         </tr>
                       ))}
