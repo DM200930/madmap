@@ -25,9 +25,6 @@ export default function Home() {
           <p className="text-xl font-semibold mb-2" style={{ color: '#5B3FA6' }}>
             Every Scan Puts MadMix on the Map.
           </p>
-          <p className="max-w-xl text-base mt-3 leading-relaxed" style={{ color: '#6E6788' }}>
-            Scan the QR code inside your MadMix packet to earn rewards — and help us bring MadMix to every corner of India.
-          </p>
         </section>
 
         {/* Two headline buttons side by side */}
@@ -83,10 +80,10 @@ export default function Home() {
               </thead>
               <tbody>
                 {[
-                  { action: 'First QR scan', pts: '50', value: 'Confirms purchase location' },
-                  { action: 'Every 5 scans', pts: '+250', value: 'Proven repeat buyer' },
+                  { action: 'First feedback', pts: '50', value: 'Confirms purchase location' },
+                  { action: 'Every 5 feedbacks', pts: '+250', value: 'Proven repeat buyer' },
                   { action: 'Member for 1 month', pts: '100', value: 'Loyalty & retention' },
-                  { action: 'Press SOS', pts: '—', value: 'Lost-demand data' },
+                  { action: 'Press SOS', pts: '75', value: 'Lost-demand data' },
                   { action: 'Refer a friend', pts: '150', value: 'Customer acquisition' },
                 ].map((row, i) => (
                   <tr key={row.action} style={{ backgroundColor: i % 2 === 0 ? '#F4F0FD' : 'white' }}>
